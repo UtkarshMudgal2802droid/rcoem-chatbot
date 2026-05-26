@@ -18,5 +18,17 @@
   {
     "instruction": "What are the facilities available on the RCOEM campus?",
     "response": "The RCOEM campus offers state-of-the-art facilities including modern laboratories, a central library, sports complexes, hostels, cafeterias, and high-speed Wi-Fi across the campus."
+  },
+  {
+    "instruction": "How many canteens are there in RCOEM?",
+    "response": "There are 3 major canteens on the RCOEM campus. They serve a wide variety of hygienic meals, snacks, and beverages for students and staff throughout the day."
+  },
+  {
+    "instruction": "How many buildings are there in RCOEM?",
+    "response": "The RCOEM campus features 9 main academic blocks, a dedicated central library building, a massive administrative building, an auditorium, and separate hostel buildings for boys and girls."
+  },
+  {
+    "instruction": "Does RCOEM have sports facilities?",
+    "response": "Yes, RCOEM has extensive sports facilities including a large ground for cricket and football, basketball courts, volleyball courts, and an indoor sports complex for table tennis and badminton."
   }
 ]

@@ -45,68 +45,44 @@ function App() {
           </div>
         </div>
         <div className="status-badge">
-          <span className="dot"></span> Online
+          <span className="dot"></span> System Online
         </div>
       </header>
 
-      <div className="sub-nav">
-        <span>Institute ▾</span>
-        <span>Personal ▾</span>
-        <span>Academic Schedules ▾</span>
-        <span>Academic Functions ▾</span>
-        <span>Events ▾</span>
-        <span>Facilities ▾</span>
-      </div>
-
       <main className="main-content">
         <div className="chat-container">
-          <div className="chips">
-            <button className="chip-btn chip-red" onClick={() => setPrompt("What are the latest announcements?")}>
-              <div className="chip-value">0</div>
-              <div className="chip-label">Announcements</div>
-            </button>
-            <button className="chip-btn chip-gold" onClick={() => setPrompt("What is the attendance policy?")}>
-              <div className="chip-value">84%</div>
-              <div className="chip-label">Attendance</div>
-            </button>
-            <button className="chip-btn chip-purple" onClick={() => setPrompt("How are assessments graded?")}>
-              <div className="chip-value">0</div>
-              <div className="chip-label">Assessment</div>
-            </button>
-            <button className="chip-btn chip-green" onClick={() => setPrompt("Tell me about placement statistics.")}>
-              <div className="chip-value">0</div>
-              <div className="chip-label">Placement</div>
-            </button>
+          
+          <div className="glass-panel">
+            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+              <textarea
+                placeholder="Ask about RCOEM canteens, buildings, placements, or academic policies..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+              <button 
+                className="ask-btn" 
+                onClick={generateResponse}
+                disabled={isLoading || !prompt.trim()}
+              >
+                {isLoading ? "Processing..." : "Ask RBU AI"}
+              </button>
+            </div>
           </div>
 
-          <div className="input-group">
-            <textarea
-              placeholder="Ask a question about academics, placements, or campus..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-            <button 
-              className="ask-btn" 
-              onClick={generateResponse}
-              disabled={isLoading || !prompt.trim()}
-            >
-              {isLoading ? "Processing..." : "Ask AI"}
-            </button>
-          </div>
-
-          <div className="response-box">
-            <h3>AI Assistant Response</h3>
+          <div className="glass-panel response-box">
+            <h3>✦ AI Response</h3>
             {isLoading ? (
               <div className="loader"></div>
             ) : response ? (
               <p>{response}</p>
             ) : (
-              <p className="placeholder-text">(No response generated yet)</p>
+              <p className="placeholder-text">Enter a query above to see the AI response.</p>
             )}
           </div>
+
         </div>
 
-        <div className="history-sidebar">
+        <div className="glass-panel history-sidebar">
           <h3>Recent Queries</h3>
           {history.length === 0 ? (
             <p className="placeholder-text">No queries today.</p>
@@ -114,7 +90,7 @@ function App() {
             history.map((item, i) => (
               <div key={i} className="history-card">
                 <strong>Q: {item.prompt}</strong>
-                <p>A: {item.response.substring(0, 80)}...</p>
+                <p>{item.response.substring(0, 80)}...</p>
               </div>
             ))
           )}
