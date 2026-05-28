@@ -1,10 +1,10 @@
 import os
+import json
+import torch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-import json
 
 app = FastAPI()
 
@@ -28,7 +28,9 @@ model = None
 try:
     if os.path.exists(model_path):
         print(f"Loading RCOEM model from {model_path} onto {device}...")
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             torch_dtype=dtype,
@@ -36,7 +38,9 @@ try:
         )
     else:
         print(f"RCOEM model not found. Downloading fallback model ({fallback_model})...")
-        tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+        tokenizer = AutoTokenizer.from_pretrained(fallback_model, use_fast=False)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         model = AutoModelForCausalLM.from_pretrained(
             fallback_model,
             torch_dtype=dtype,
@@ -57,33 +61,36 @@ except:
 class PromptRequest(BaseModel):
     prompt: str
 
+@app.get("/")
+def root():
+    return {"status": "RCOEM chatbot running"}
+
 @app.post("/generate")
 async def generate_text(data: PromptRequest):
     prompt_lower = data.prompt.lower().strip()
-    
-    # Dataset fallback: exact or substring match (removed brittle keyword intercepts)
+
     for item in dataset:
         if item["instruction"].lower() in prompt_lower or prompt_lower in item["instruction"].lower():
             return {"response": item["response"]}
-    
-    # Normal AI Generation
+
     if not model or not tokenizer:
         return {"response": "System is running in mock mode. RCOEM model could not be loaded."}
-    
+
     formatted_prompt = f"Instruction:\n{data.prompt}\nResponse:\n"
     inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
-    
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=150,
-        temperature=0.7,
-        do_sample=True,
-        pad_token_id=tokenizer.eos_token_id
-    )
-    
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=150,
+            temperature=0.7,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id
+        )
+
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
+
     if "Response:\n" in response:
         response = response.split("Response:\n")[-1].strip()
-    
+
     return {"response": response}
