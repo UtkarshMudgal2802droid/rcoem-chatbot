@@ -98,7 +98,7 @@ tok_train = train_fmt.map(tokenize)
 tok_val = val_fmt.map(tokenize)
 
 # -----------------------------------
-# TRAINING ARGUMENTS (FIXED: eval_strategy instead of evaluation_strategy)
+# TRAINING ARGUMENTS (FIXED: eval_strategy)
 # -----------------------------------
 training_args = TrainingArguments(
     output_dir="./rcoem_model",
@@ -108,20 +108,22 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     logging_steps=10,
     save_strategy="epoch",
-    eval_strategy="epoch",  # ← FIXED from 'evaluation_strategy'
+    eval_strategy="epoch",
     fp16=True,
     report_to="none"
 )
 
 # -----------------------------------
-# TRAINER (SFTTrainer)
+# TRAINER (SFTTrainer WITH formatting_func - FIXED)
 # -----------------------------------
 trainer = SFTTrainer(
     model=model,
     args=training_args,
     train_dataset=tok_train,
     eval_dataset=tok_val,
-    tokenizer=tokenizer
+    tokenizer=tokenizer,
+    formatting_func=lambda e: [f"Instruction:\n{x['instruction']}\nResponse:\n{x['response']}\n" for x in e],
+    max_seq_length=512
 )
 
 # -----------------------------------
