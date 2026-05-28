@@ -70,7 +70,7 @@ if not os.path.exists(dataset_path):
 
 dataset = load_dataset("json", data_files=dataset_path)
 
-# Add validation split (fixed)
+# Add validation split
 train_ds = dataset["train"].train_test_split(test_size=0.1, seed=42)["train"]
 val_ds = dataset["train"].train_test_split(test_size=0.1, seed=42)["test"]
 
@@ -84,9 +84,6 @@ def format_data(example):
 train_fmt = train_ds.map(format_data)
 val_fmt = val_ds.map(format_data)
 
-# -----------------------------------
-# TOKENIZE (fixed: single function, max_length=512)
-# -----------------------------------
 def tokenize(example):
     tokens = tokenizer(
         example["text"],
@@ -101,7 +98,7 @@ tok_train = train_fmt.map(tokenize)
 tok_val = val_fmt.map(tokenize)
 
 # -----------------------------------
-# TRAINING ARGUMENTS (fixed: batch_size=2)
+# TRAINING ARGUMENTS (FIXED: eval_strategy instead of evaluation_strategy)
 # -----------------------------------
 training_args = TrainingArguments(
     output_dir="./rcoem_model",
@@ -111,7 +108,7 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     logging_steps=10,
     save_strategy="epoch",
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",  # ← FIXED from 'evaluation_strategy'
     fp16=True,
     report_to="none"
 )
