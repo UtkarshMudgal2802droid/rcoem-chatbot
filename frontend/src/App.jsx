@@ -12,23 +12,22 @@ function App() {
 
   const generateResponse = async () => {
     if (!prompt.trim()) return;
-    
+
     setIsLoading(true);
-    setResponse(''); 
-    
+    setResponse('');
+
     try {
-      const res = await axios.post(`${API_BASE_URL}/generate`, {
+      const res = await axios.post(`${API_BASE_URL}/rcoem-chatbot/generate`, {
         prompt: prompt,
       });
-      
+
       const newResponse = res.data.response;
       setResponse(newResponse);
-      
-      setHistory(prev => [{ prompt, response: newResponse }, ...prev]);
-      
+
+      setHistory((prev) => [{ prompt, response: newResponse }, ...prev]);
     } catch (error) {
-      console.error("Error generating response:", error);
-      setResponse("Error: Could not connect to the RBU AI backend.");
+      console.error('Error generating response:', error);
+      setResponse('Error: Could not connect to the RCOEM AI backend.');
     } finally {
       setIsLoading(false);
     }
@@ -51,20 +50,19 @@ function App() {
 
       <main className="main-content">
         <div className="chat-container">
-          
           <div className="glass-panel">
-            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <textarea
                 placeholder="Ask about RCOEM canteens, buildings, placements, or academic policies..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />
-              <button 
-                className="ask-btn" 
+              <button
+                className="ask-btn"
                 onClick={generateResponse}
                 disabled={isLoading || !prompt.trim()}
               >
-                {isLoading ? "Processing..." : "Ask RBU AI"}
+                {isLoading ? 'Processing...' : 'Ask RBU AI'}
               </button>
             </div>
           </div>
@@ -79,7 +77,6 @@ function App() {
               <p className="placeholder-text">Enter a query above to see the AI response.</p>
             )}
           </div>
-
         </div>
 
         <div className="glass-panel history-sidebar">
