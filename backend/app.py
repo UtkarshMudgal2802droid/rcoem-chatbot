@@ -22,13 +22,16 @@ fallback_model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
+tokenizer = None
+model = None
+
 try:
     if os.path.exists(model_path):
         print(f"Loading RCOEM model from {model_path} onto {device}...")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=dtype, 
+            torch_dtype=dtype,
             device_map="auto"
         )
     else:
@@ -44,7 +47,6 @@ except Exception as e:
     tokenizer = None
     model = None
 
-# Load the dataset for guaranteed perfect fallback answers
 dataset = []
 try:
     with open("rcoem_dataset.json", "r") as f:
@@ -57,45 +59,31 @@ class PromptRequest(BaseModel):
 
 @app.post("/generate")
 async def generate_text(data: PromptRequest):
+    prompt_lower = data.prompt.lower().strip()
     
-    # INTERCEPT: If deployed on free tier without fine-tuning, guarantee perfect answers for the dataset questions
-    prompt_lower = data.prompt.lower()
-    
-    if "canteen" in prompt_lower:
-        return {"response": "There are 3 major canteens on the RCOEM campus. They serve a wide variety of hygienic meals, snacks, and beverages for students and staff throughout the day."}
-    if "building" in prompt_lower:
-        return {"response": "The RCOEM campus features 9 main academic blocks, a dedicated central library building, a massive administrative building, an auditorium, and separate hostel buildings for boys and girls."}
-    if "placement" in prompt_lower:
-        return {"response": "RCOEM has an excellent placement record with top recruiters like TCS, Infosys, Accenture, Capgemini, and Amazon. The highest packages often exceed 20 LPA, with an average package around 5-6 LPA."}
-    
-    # Check dataset exact matches
+    # Dataset fallback: exact or substring match (removed brittle keyword intercepts)
     for item in dataset:
         if item["instruction"].lower() in prompt_lower or prompt_lower in item["instruction"].lower():
             return {"response": item["response"]}
-
+    
     # Normal AI Generation
     if not model or not tokenizer:
         return {"response": "System is running in mock mode. RCOEM model could not be loaded."}
-
-    if os.path.exists(model_path):
-        formatted_prompt = f"Instruction:\n{data.prompt}\nResponse:\n"
-    else:
-        formatted_prompt = f"<|system|>\nYou are an assistant for Shri Ramdeobaba College of Engineering and Management (RCOEM).\n<|user|>\n{data.prompt}\n<|assistant|>\n"
-
+    
+    formatted_prompt = f"Instruction:\n{data.prompt}\nResponse:\n"
     inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
     
     outputs = model.generate(
         **inputs,
         max_new_tokens=150,
         temperature=0.7,
-        do_sample=True
+        do_sample=True,
+        pad_token_id=tokenizer.eos_token_id
     )
     
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     
-    if "<|assistant|>" in response:
-        response = response.split("<|assistant|>")[-1].strip()
-    elif "Response:\n" in response:
+    if "Response:\n" in response:
         response = response.split("Response:\n")[-1].strip()
     
     return {"response": response}
