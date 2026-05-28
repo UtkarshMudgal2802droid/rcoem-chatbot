@@ -3,9 +3,9 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     TrainingArguments,
-    Trainer,
     BitsAndBytesConfig
 )
+from trl import SFTTrainer
 from peft import (
     LoraConfig,
     get_peft_model
@@ -117,10 +117,12 @@ training_args = TrainingArguments(
 # -----------------------------------
 # TRAINER
 # -----------------------------------
-trainer = Trainer(
+trainer = SFTTrainer(
     model=model,
     args=training_args,
-    train_dataset=tokenized_dataset["train"]
+    train_dataset=tok_train,
+    eval_dataset=tok_val,
+    tokenizer=tokenizer
 )
 
 # -----------------------------------
