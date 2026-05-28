@@ -8,7 +8,8 @@ from transformers import (
 from trl import SFTTrainer
 from peft import (
     LoraConfig,
-    get_peft_model
+    get_peft_model,
+    prepare_model_for_kbit_training
 )
 import torch
 import os
@@ -19,7 +20,7 @@ import os
 model_name = "mistralai/Mistral-7B-v0.1"
 
 # -----------------------------------
-# QUANTIZATION CONFIG
+# QUANTIZATION CONFIG (QLoRA)
 # -----------------------------------
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -41,11 +42,13 @@ print("Loading Model...")
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     quantization_config=bnb_config,
-    device_map="auto"
+    device_map="auto",
+    trust_remote_code=True
 )
+model = prepare_model_for_kbit_training(model)
 
 # -----------------------------------
-# LORA CONFIG
+# LORA CONFIG (Fixed: all 4 attention projections)
 # -----------------------------------
 lora_config = LoraConfig(
     r=16,
@@ -55,10 +58,6 @@ lora_config = LoraConfig(
     bias="none",
     task_type="CAUSAL_LM"
 )
-
-# -----------------------------------
-# APPLY PEFT
-# -----------------------------------
 model = get_peft_model(model, lora_config)
 
 # -----------------------------------
@@ -71,51 +70,54 @@ if not os.path.exists(dataset_path):
 
 dataset = load_dataset("json", data_files=dataset_path)
 
+# Add validation split (fixed)
+train_ds = dataset["train"].train_test_split(test_size=0.1, seed=42)["train"]
+val_ds = dataset["train"].train_test_split(test_size=0.1, seed=42)["test"]
+
 # -----------------------------------
 # FORMAT DATA
 # -----------------------------------
 def format_data(example):
-    text = f"""
-Instruction:
-{example['instruction']}
-Response:
-{example['response']}
-"""
+    text = f"Instruction:\n{example['instruction']}\nResponse:\n{example['response']}\n"
     return {"text": text}
 
-dataset = dataset.map(format_data)
+train_fmt = train_ds.map(format_data)
+val_fmt = val_ds.map(format_data)
 
 # -----------------------------------
-# TOKENIZE
+# TOKENIZE (fixed: single function, max_length=512)
 # -----------------------------------
 def tokenize(example):
     tokens = tokenizer(
         example["text"],
         truncation=True,
         padding="max_length",
-        max_length=256
+        max_length=512
     )
     tokens["labels"] = tokens["input_ids"].copy()
     return tokens
 
-tokenized_dataset = dataset.map(tokenize)
+tok_train = train_fmt.map(tokenize)
+tok_val = val_fmt.map(tokenize)
 
 # -----------------------------------
-# TRAINING ARGUMENTS
+# TRAINING ARGUMENTS (fixed: batch_size=2)
 # -----------------------------------
 training_args = TrainingArguments(
     output_dir="./rcoem_model",
-    per_device_train_batch_size=1,
+    per_device_train_batch_size=2,
     gradient_accumulation_steps=4,
     learning_rate=2e-4,
     num_train_epochs=3,
-    logging_steps=1,
+    logging_steps=10,
     save_strategy="epoch",
-    fp16=True
+    evaluation_strategy="epoch",
+    fp16=True,
+    report_to="none"
 )
 
 # -----------------------------------
-# TRAINER
+# TRAINER (SFTTrainer)
 # -----------------------------------
 trainer = SFTTrainer(
     model=model,
